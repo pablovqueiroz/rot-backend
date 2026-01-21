@@ -6,7 +6,9 @@ const { isProvider } = require("../middlewares/role.middleware");
 // Lists all active providers (public)
 router.get("/", async (req, res) => {
   try {
-    const providers = await Provider.find({ isActive: true }).select("-password");
+    const providers = await Provider.find({ isActive: true }).select(
+      "-password",
+    );
     return res.status(200).json(providers);
   } catch (err) {
     console.log(err);
@@ -17,7 +19,9 @@ router.get("/", async (req, res) => {
 // Retrieves logged provider profile
 router.get("/me", isAuthenticated, isProvider, async (req, res) => {
   try {
-    const provider = await Provider.findById(req.payload._id).select("-password");
+    const provider = await Provider.findById(req.payload._id).select(
+      "-password",
+    );
     return res.status(200).json(provider);
   } catch (err) {
     console.log(err);
@@ -31,13 +35,42 @@ router.put("/me", isAuthenticated, isProvider, async (req, res) => {
     const updatedProvider = await Provider.findByIdAndUpdate(
       req.payload._id,
       req.body,
-      { new: true }
+      { new: true },
     ).select("-password");
 
     return res.status(200).json(updatedProvider);
   } catch (err) {
     console.log(err);
     return res.status(500).json({ errorMessage: "Internal server error" });
+  }
+});
+
+//update image
+router.put("/image", isAuthenticated, async (req, res) => {
+  try {
+    const { image } = req.body;
+
+    if (!image?.url || !image?.public_id) {
+      return res.status(400).json({ message: "Image is required." });
+    }
+
+    const provider = await Provider.findById(req.payload._id);
+
+    if (!provider) {
+      return res.status(404).json({ message: "Provider not found." });
+    }
+
+    if (provider.image?.public_id) {
+      await cloudinary.uploader.destroy(provider.image.public_id);
+    }
+
+    provider.image = image;
+    await provider.save();
+
+    return res.json(provider.image);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error." });
   }
 });
 
@@ -74,44 +107,54 @@ router.post("/services", isAuthenticated, isProvider, async (req, res) => {
 });
 
 // Updates a provider service
-router.put("/services/:serviceId", isAuthenticated, isProvider, async (req, res) => {
-  try {
-    const provider = await Provider.findById(req.payload._id);
-    const service = provider.services.id(req.params.serviceId);
+router.put(
+  "/services/:serviceId",
+  isAuthenticated,
+  isProvider,
+  async (req, res) => {
+    try {
+      const provider = await Provider.findById(req.payload._id);
+      const service = provider.services.id(req.params.serviceId);
 
-    if (!service) {
-      return res.status(404).json({ errorMessage: "Service not found." });
+      if (!service) {
+        return res.status(404).json({ errorMessage: "Service not found." });
+      }
+
+      Object.assign(service, req.body);
+      await provider.save();
+
+      return res.status(200).json(service);
+    } catch (err) {
+      console.log(err);
+      return res.status(500).json({ errorMessage: "Internal server error" });
     }
-
-    Object.assign(service, req.body);
-    await provider.save();
-
-    return res.status(200).json(service);
-  } catch (err) {
-    console.log(err);
-    return res.status(500).json({ errorMessage: "Internal server error" });
-  }
-});
+  },
+);
 
 // Removes a provider service
-router.delete("/services/:serviceId", isAuthenticated, isProvider, async (req, res) => {
-  try {
-    const provider = await Provider.findById(req.payload._id);
-    const service = provider.services.id(req.params.serviceId);
+router.delete(
+  "/services/:serviceId",
+  isAuthenticated,
+  isProvider,
+  async (req, res) => {
+    try {
+      const provider = await Provider.findById(req.payload._id);
+      const service = provider.services.id(req.params.serviceId);
 
-    if (!service) {
-      return res.status(404).json({ errorMessage: "Service not found." });
+      if (!service) {
+        return res.status(404).json({ errorMessage: "Service not found." });
+      }
+
+      service.remove();
+      await provider.save();
+
+      return res.status(204).send();
+    } catch (err) {
+      console.log(err);
+      return res.status(500).json({ errorMessage: "Internal server error" });
     }
-
-    service.remove();
-    await provider.save();
-
-    return res.status(204).send();
-  } catch (err) {
-    console.log(err);
-    return res.status(500).json({ errorMessage: "Internal server error" });
-  }
-});
+  },
+);
 
 // Updates provider availability
 router.put("/availability", isAuthenticated, isProvider, async (req, res) => {

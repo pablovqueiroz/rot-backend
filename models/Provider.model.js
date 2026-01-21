@@ -15,25 +15,25 @@ const serviceSchema = new Schema(
       required: true,
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const availabilitySchema = new Schema(
   {
     dayOfWeek: {
-      type: Number, // 0 = Domingo, 6 = Sábado
+      type: Number,
       required: true,
     },
     startTime: {
-      type: String, // "09:00"
+      type: String,
       required: true,
     },
     endTime: {
-      type: String, // "18:00"
+      type: String,
       required: true,
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const providerSchema = new Schema(
@@ -49,7 +49,7 @@ const providerSchema = new Schema(
     password: {
       type: String,
       required: [true, "Password is required."],
-      select: false
+      select: false,
     },
 
     name: {
@@ -66,6 +66,17 @@ const providerSchema = new Schema(
       maxlength: 500,
     },
 
+    image: {
+      url: {
+        type: String,
+        required: true,
+      },
+      public_id: {
+        type: String,
+        required: true,
+      },
+    },
+
     services: [serviceSchema],
 
     availability: [availabilitySchema],
@@ -77,7 +88,7 @@ const providerSchema = new Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 const Provider = model("Provider", providerSchema);

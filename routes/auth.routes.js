@@ -9,10 +9,12 @@ const { isAuthenticated } = require("../middlewares/jwt.middleware");
 // Creates user
 router.post("/signup/user", async (req, res) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name, image } = req.body;
 
-    if (!email || !password || !name) {
-      return res.status(400).json({ message: "Provide email, password and name." });
+    if (!email || !password || !name || !image?.url || !image?.public_id) {
+      return res
+        .status(400)
+        .json({ message: "Provide email, password and name." });
     }
 
     if (await User.findOne({ email })) {
@@ -39,10 +41,12 @@ router.post("/signup/user", async (req, res) => {
 // Creates provider
 router.post("/signup/provider", async (req, res) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name, image } = req.body;
 
-    if (!email || !password || !name) {
-      return res.status(400).json({ message: "Provide email, password and name." });
+    if (!email || !password || !name || !image?.url || !image?.public_id) {
+      return res
+        .status(400)
+        .json({ message: "Please fill in the required fields." });
     }
 
     if (await Provider.findOne({ email })) {
@@ -53,14 +57,19 @@ router.post("/signup/provider", async (req, res) => {
     const hashedPassword = bcryptjs.hashSync(password, salt);
 
     const createdProvider = await Provider.create({
-      ...req.body,
+      email,
+      name,
       password: hashedPassword,
+      image,
     });
 
-    const safeProvider = await Provider.findById(createdProvider._id).select("-password");
+    const safeProvider = await Provider.findById(createdProvider._id).select(
+      "-password",
+    );
+
     return res.status(201).json(safeProvider);
   } catch (err) {
-    console.log(err);
+    console.error(err);
     return res.status(500).json({ errorMessage: "Internal server error" });
   }
 });

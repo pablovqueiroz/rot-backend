@@ -23,6 +23,9 @@ app.use("/api/users", usersRoutes);
 const providersRoutes = require("./routes/providers.routes");
 app.use("/api/providers", providersRoutes);
 
+const uploadRoutes = require("./routes/upload.routes");
+app.use("/api/upload", uploadRoutes);
+
 require("./error-handling")(app);
 
 module.exports = app;

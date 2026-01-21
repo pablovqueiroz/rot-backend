@@ -9,21 +9,32 @@ const userSchema = new Schema(
       lowercase: true,
       trim: true,
     },
+
     password: {
       type: String,
       required: [true, "Password is required."],
-      select: false
+      select: false,
     },
+
     name: {
       type: String,
       required: [true, "Name is required."],
     },
+    
+    image: {
+      url: {
+        type: String,
+        required: true,
+      },
+      public_id: {
+        type: String,
+        required: true,
+      },
+    },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
-const User = model("User", userSchema);
-
-module.exports = User;
+module.exports = model("User", userSchema);
