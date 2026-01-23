@@ -2,14 +2,21 @@ const { Schema, model } = require("mongoose");
 
 const serviceSchema = new Schema(
   {
+    id: {
+      type: String,
+      required: true,
+    },
+
     name: {
       type: String,
       required: true,
     },
+
     price: {
       type: Number,
       required: true,
     },
+
     durationMinutes: {
       type: Number,
       required: true,
@@ -75,6 +82,12 @@ const providerSchema = new Schema(
         type: String,
         required: true,
       },
+    },
+
+    role: {
+      type: String,
+      enum: ["provider"],
+      default: "provider",
     },
 
     services: [serviceSchema],

@@ -20,16 +20,27 @@ const userSchema = new Schema(
       type: String,
       required: [true, "Name is required."],
     },
-    
+
+    phone: {
+      type: String,
+    },
+
     image: {
       url: {
         type: String,
         required: true,
       },
+
       public_id: {
         type: String,
         required: true,
       },
+    },
+
+    role: {
+      type: String,
+      enum: ["user"],
+      default: "user",
     },
   },
   {

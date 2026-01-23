@@ -1,24 +1,28 @@
 const router = require("express").Router();
 const bcryptjs = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-
 const User = require("../models/User.model");
 const Provider = require("../models/Provider.model");
 const { isAuthenticated } = require("../middlewares/jwt.middleware");
+const upload = require("../middlewares/upload.middleware");
 
 // Creates user
-router.post("/signup/user", async (req, res) => {
+router.post("/signup/user", upload.single("image"), async (req, res) => {
   try {
-    const { email, password, name, image } = req.body;
-
-    if (!email || !password || !name || !image?.url || !image?.public_id) {
-      return res
-        .status(400)
-        .json({ message: "Provide email, password and name." });
+    const { email, password, name, phone, role } = req.body;
+    if (!email || !password || !name || !req.file) {
+      return res.status(400).json({
+        errorMessage: "Provide email, password, name and profile image.",
+      });
     }
 
-    if (await User.findOne({ email })) {
-      return res.status(403).json({ errorMessage: "Invalid Credentials" });
+    const existingUser = await User.findOne({ email });
+    const existingProvider = await Provider.findOne({ email });
+
+    if (existingUser || existingProvider) {
+      return res.status(403).json({
+        errorMessage: "Invalid credentials.",
+      });
     }
 
     const salt = bcryptjs.genSaltSync(12);
@@ -28,39 +32,61 @@ router.post("/signup/user", async (req, res) => {
       email,
       password: hashedPassword,
       name,
+      phone,
+      role,
+      image: {
+        url: req.file.path,
+        public_id: req.file.filename,
+      },
     });
 
     const safeUser = await User.findById(createdUser._id).select("-password");
+
     return res.status(201).json(safeUser);
   } catch (err) {
-    console.log(err);
-    return res.status(500).json({ errorMessage: "Internal server error" });
+    console.error(err);
+    return res.status(500).json({
+      errorMessage: "Internal server error",
+    });
   }
 });
 
 // Creates provider
-router.post("/signup/provider", async (req, res) => {
+router.post("/signup/provider", upload.single("image"), async (req, res) => {
   try {
-    const { email, password, name, image } = req.body;
+    const { email, password, name, phone, role } = req.body;
 
-    if (!email || !password || !name || !image?.url || !image?.public_id) {
-      return res
-        .status(400)
-        .json({ message: "Please fill in the required fields." });
+    if (!email || !password || !name || !req.file) {
+      return res.status(400).json({
+        errorMessage: "Please fill in email, password, name and profile image.",
+      });
     }
+    const existingUser = await User.findOne({ email });
+    const existingProvider = await Provider.findOne({ email });
 
-    if (await Provider.findOne({ email })) {
-      return res.status(403).json({ errorMessage: "Invalid Credentials" });
+    if (existingUser || existingProvider) {
+      return res.status(403).json({
+        errorMessage: "Invalid credentials.",
+      });
     }
 
     const salt = bcryptjs.genSaltSync(12);
+
     const hashedPassword = bcryptjs.hashSync(password, salt);
 
     const createdProvider = await Provider.create({
       email,
       name,
       password: hashedPassword,
-      image,
+      phone,
+      role,
+      image: {
+        url: req.file.path,
+        public_id: req.file.filename,
+      },
+      services: [],
+      availability: [],
+      isActive: true,
     });
 
     const safeProvider = await Provider.findById(createdProvider._id).select(
@@ -70,7 +96,9 @@ router.post("/signup/provider", async (req, res) => {
     return res.status(201).json(safeProvider);
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ errorMessage: "Internal server error" });
+    return res.status(500).json({
+      errorMessage: "Internal server error",
+    });
   }
 });
 
@@ -95,7 +123,11 @@ router.post("/login", async (req, res) => {
     const role =
       account.constructor.modelName === "Provider" ? "provider" : "user";
 
-    const payload = { _id: account._id, role };
+    const payload = {
+      _id: account._id,
+      role,
+      email: account.email,
+    };
 
     const authToken = jwt.sign(payload, process.env.TOKEN_SECRET, {
       algorithm: "HS256",

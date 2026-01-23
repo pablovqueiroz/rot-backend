@@ -2,6 +2,8 @@ const router = require("express").Router();
 const Provider = require("../models/Provider.model");
 const { isAuthenticated } = require("../middlewares/jwt.middleware");
 const { isProvider } = require("../middlewares/role.middleware");
+const cloudinary = require("../config/cloudinary");
+const crypto = require("crypto");
 
 // Lists all active providers (public)
 router.get("/", async (req, res) => {
@@ -77,15 +79,30 @@ router.put("/image", isAuthenticated, async (req, res) => {
 // Deletes logged provider account
 router.delete("/me", isAuthenticated, isProvider, async (req, res) => {
   try {
+    const provider = await Provider.findById(req.payload._id);
+
+    if (!provider) {
+      return res.status(404).json({ message: "Provider not found." });
+    }
+
+    if (provider.image?.public_id) {
+      try {
+        await cloudinary.uploader.destroy(provider.image.public_id);
+      } catch (cloudErr) {
+        console.error("Cloudinary delete failed:", cloudErr);
+      }
+    }
+
     await Provider.findByIdAndDelete(req.payload._id);
+
     return res.status(204).send();
   } catch (err) {
-    console.log(err);
+    console.error(err);
     return res.status(500).json({ errorMessage: "Internal server error" });
   }
 });
 
-// Adds a new service to logged provider
+// Adds a new service
 router.post("/services", isAuthenticated, isProvider, async (req, res) => {
   try {
     const { name, price, durationMinutes } = req.body;
@@ -93,12 +110,14 @@ router.post("/services", isAuthenticated, isProvider, async (req, res) => {
     if (!name || !price || !durationMinutes) {
       return res.status(400).json({ errorMessage: "Missing required fields." });
     }
-
     const provider = await Provider.findById(req.payload._id);
-
-    provider.services.push({ name, price, durationMinutes });
+    provider.services.push({
+      id: crypto.randomUUID(),
+      name,
+      price,
+      durationMinutes,
+    });
     await provider.save();
-
     return res.status(201).json(provider.services);
   } catch (err) {
     console.log(err);
@@ -114,13 +133,34 @@ router.put(
   async (req, res) => {
     try {
       const provider = await Provider.findById(req.payload._id);
-      const service = provider.services.id(req.params.serviceId);
+
+      const service = provider.services.find(
+        (service) => service.id === req.params.serviceId,
+      );
 
       if (!service) {
         return res.status(404).json({ errorMessage: "Service not found." });
       }
 
-      Object.assign(service, req.body);
+      if (
+        req.body.price !== undefined &&
+        Number.isNaN(Number(req.body.price))
+      ) {
+        return res.status(400).json({ errorMessage: "Invalid price" });
+      }
+
+      if (
+        req.body.durationMinutes !== undefined &&
+        Number.isNaN(Number(req.body.durationMinutes))
+      ) {
+        return res.status(400).json({ errorMessage: "Invalid duration" });
+      }
+
+      service.name = req.body.name ?? service.name;
+      service.price = req.body.price ?? service.price;
+      service.durationMinutes =
+        req.body.durationMinutes ?? service.durationMinutes;
+
       await provider.save();
 
       return res.status(200).json(service);
@@ -131,7 +171,7 @@ router.put(
   },
 );
 
-// Removes a provider service
+// delete a provider service
 router.delete(
   "/services/:serviceId",
   isAuthenticated,
@@ -139,15 +179,18 @@ router.delete(
   async (req, res) => {
     try {
       const provider = await Provider.findById(req.payload._id);
-      const service = provider.services.id(req.params.serviceId);
 
-      if (!service) {
+      const initialLength = provider.services.length;
+
+      provider.services = provider.services.filter(
+        (service) => service.id !== req.params.serviceId,
+      );
+
+      if (provider.services.length === initialLength) {
         return res.status(404).json({ errorMessage: "Service not found." });
       }
 
-      service.remove();
       await provider.save();
-
       return res.status(204).send();
     } catch (err) {
       console.log(err);

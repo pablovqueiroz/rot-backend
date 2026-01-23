@@ -3,6 +3,7 @@ const User = require("../models/User.model");
 const Appointment = require("../models/Appointment.model");
 const { isAuthenticated } = require("../middlewares/jwt.middleware");
 const { isUser } = require("../middlewares/role.middleware");
+const cloudinary = require("../config/cloudinary");
 
 // Retrieves logged user profile
 router.get("/me", isAuthenticated, isUser, async (req, res) => {
@@ -77,23 +78,12 @@ router.put("/image", isAuthenticated, async (req, res) => {
   }
 });
 
-// Lists appointments for logged user
-router.get("/me/appointments", isAuthenticated, isUser, async (req, res) => {
-  try {
-    const appointments = await Appointment.find({
-      client: req.payload._id,
-    }).populate("provider", "name services");
-
-    return res.status(200).json(appointments);
-  } catch (err) {
-    console.log(err);
-    return res.status(500).json({ errorMessage: "Internal server error" });
-  }
-});
-
 // Deletes logged user account
 router.delete("/me", isAuthenticated, isUser, async (req, res) => {
   try {
+    if (user.image?.public_id) {
+      await cloudinary.uploader.destroy(user.image.public_id);
+    }
     await User.findByIdAndDelete(req.payload._id);
 
     return res.status(204).send();
