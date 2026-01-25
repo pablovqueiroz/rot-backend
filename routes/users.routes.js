@@ -81,9 +81,12 @@ router.put("/image", isAuthenticated, async (req, res) => {
 // Deletes logged user account
 router.delete("/me", isAuthenticated, isUser, async (req, res) => {
   try {
-    if (user.image?.public_id) {
+    const user = await User.findById(req.payload._id);
+
+    if (user?.image?.public_id) {
       await cloudinary.uploader.destroy(user.image.public_id);
     }
+
     await User.findByIdAndDelete(req.payload._id);
 
     return res.status(204).send();

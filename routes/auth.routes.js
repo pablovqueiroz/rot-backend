@@ -9,7 +9,7 @@ const upload = require("../middlewares/upload.middleware");
 // Creates user
 router.post("/signup/user", upload.single("image"), async (req, res) => {
   try {
-    const { email, password, name, phone, role } = req.body;
+    const { email, password, name, phone } = req.body;
     if (!email || !password || !name || !req.file) {
       return res.status(400).json({
         errorMessage: "Provide email, password, name and profile image.",
@@ -33,7 +33,6 @@ router.post("/signup/user", upload.single("image"), async (req, res) => {
       password: hashedPassword,
       name,
       phone,
-      role,
       image: {
         url: req.file.path,
         public_id: req.file.filename,
@@ -54,7 +53,7 @@ router.post("/signup/user", upload.single("image"), async (req, res) => {
 // Creates provider
 router.post("/signup/provider", upload.single("image"), async (req, res) => {
   try {
-    const { email, password, name, phone, role } = req.body;
+    const { email, password, name, phone } = req.body;
 
     if (!email || !password || !name || !req.file) {
       return res.status(400).json({
@@ -79,7 +78,6 @@ router.post("/signup/provider", upload.single("image"), async (req, res) => {
       name,
       password: hashedPassword,
       phone,
-      role,
       image: {
         url: req.file.path,
         public_id: req.file.filename,

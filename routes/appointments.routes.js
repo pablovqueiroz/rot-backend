@@ -44,8 +44,8 @@ router.get("/", isAuthenticated, async (req, res) => {
         : { client: req.payload._id };
 
     const appointments = await Appointment.find(filter)
-      .populate("provider", "name services")
-      .populate("client", "name");
+      .populate("provider", "name email phone")
+      .populate("client", "name email phone");
 
     return res.status(200).json(appointments);
   } catch (err) {
@@ -89,7 +89,7 @@ router.patch("/:id/status", isAuthenticated, isProvider, async (req, res) => {
     const appointment = await Appointment.findOneAndUpdate(
       { _id: req.params.id, provider: req.payload._id },
       { status },
-      { new: true }
+      { new: true },
     );
 
     if (!appointment) {
