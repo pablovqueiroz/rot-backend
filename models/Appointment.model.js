@@ -64,10 +64,6 @@ const appointmentSchema = new Schema(
   },
 );
 
-appointmentSchema.index(
-  { client: 1, provider: 1, date: 1, startTime: 1 },
-  { unique: true }
-);
 
 const Appointment = model("Appointment", appointmentSchema);
 

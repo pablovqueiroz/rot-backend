@@ -139,6 +139,51 @@ router.post("/login", async (req, res) => {
   }
 });
 
+//change password
+router.put("/change-password", isAuthenticated, async (req, res) => {
+  try {
+    const { currentPassword, newPassword, confirmNewPassword } = req.body;
+
+    if (!currentPassword || !newPassword || !confirmNewPassword) {
+      return res.status(400).json({ message: "All fields are required." });
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      return res.status(400).json({ message: "Passwords do not match." });
+    }
+
+    const account =
+      (await User.findById(req.payload._id).select("+password")) ||
+      (await Provider.findById(req.payload._id).select("+password"));
+
+    if (!account) {
+      return res.status(404).json({ message: "Account not found." });
+    }
+
+    const isPasswordCorrect = bcryptjs.compareSync(
+      currentPassword,
+      account.password,
+    );
+
+    if (!isPasswordCorrect) {
+      return res
+        .status(401)
+        .json({ message: "Current password is incorrect." });
+    }
+
+    const salt = bcryptjs.genSaltSync(12);
+    const hashedPassword = bcryptjs.hashSync(newPassword, salt);
+
+    account.password = hashedPassword;
+    await account.save();
+
+    return res.status(200).json({ message: "Password updated successfully." });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+});
+
 // Verify token
 router.get("/verify", isAuthenticated, (req, res) => {
   res.status(200).json({ decodedToken: req.payload });

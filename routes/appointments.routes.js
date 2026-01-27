@@ -54,6 +54,33 @@ router.get("/", isAuthenticated, async (req, res) => {
   }
 });
 
+// filter appointments
+router.get("/blocked", isAuthenticated, async (req, res) => {
+  try {
+    const { providerId, date } = req.query;
+
+    if (!providerId || !date) {
+      return res.status(400).json({
+        message: "providerId and date are required",
+      });
+    }
+
+    const blockedAppointments = await Appointment.find({
+      provider: providerId,
+      date: {
+        $gte: new Date(`${date}T00:00:00.000Z`),
+        $lte: new Date(`${date}T23:59:59.999Z`),
+      },
+      status: { $in: ["scheduled", "confirmed"] },
+    });
+
+    res.status(200).json(blockedAppointments);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 // Retrieves a specific appointment by id
 router.get("/:id", isAuthenticated, async (req, res) => {
   try {
