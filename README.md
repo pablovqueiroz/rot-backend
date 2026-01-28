@@ -272,43 +272,6 @@ Access to routes is controlled by middleware based on the authenticated role.
 
 ---
 
-## Running the Project Locally
-
-### Prerequisites
-- Node.js (v18 or higher recommended)
-- MongoDB (local instance or MongoDB Atlas)
-
-### Installation
-
-1. Clone the repository
-2. Install dependencies
-
-```bash
-npm install
-```
-
-3. Create a `.env` file in the root directory
-
-```env
-PORT=5005
-MONGODB_URI=your_mongodb_connection
-JWT_SECRET=your_secret_key
-```
-
-4. Start the development server
-
-```bash
-npm run dev
-```
-
-The API will be available at:
-
-```
-http://localhost:5005/api
-```
-
----
-
 ## Academic Disclaimer
 
 This project was developed for academic purposes only and is not intended for commercial use.
