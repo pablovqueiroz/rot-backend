@@ -1,7 +1,22 @@
-# ROT — RIGHT ON TIME  
-**Appointment Scheduling Platform - Backend API**
+## 🧩 Project Ecosystem
 
----
+- 🌐 **Frontend** → https://github.com/pablovqueiroz/rot-frontend
+- ⚙️ **Backend** → https://github.com/pablovqueiroz/rot-backend
+
+
+<h1 align="center">ROT — RIGHT ON TIME  </h1>
+<p align="center">
+  <img src="assets/images/logo-rot.png" width="200" alt="Project Logo">
+</p>
+ 
+<p align="center">
+  Appointment Scheduling Platform - Backend API
+</p>
+
+<p align="center" style="font-size: 20px;">
+  🌍 <a href="https://right-on-time.netlify.app/">Live Demo</a>
+</p>
+
 
 ## What is ROT?
 
@@ -297,3 +312,12 @@ http://localhost:5005/api
 ## Academic Disclaimer
 
 This project was developed for academic purposes only and is not intended for commercial use.
+
+
+## 🧩 Project Ecosystem
+
+- 🌐 **Frontend** → https://github.com/pablovqueiroz/rot-frontend
+- ⚙️ **Backend** → https://github.com/pablovqueiroz/rot-backend
+<p style="font-size: 20px;">
+  🌍 <a href="https://right-on-time.netlify.app/">Live Demo</a>
+</p>
