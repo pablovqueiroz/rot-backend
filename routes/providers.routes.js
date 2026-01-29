@@ -105,7 +105,7 @@ router.delete("/me", isAuthenticated, isProvider, async (req, res) => {
 // Adds a new service
 router.post("/services", isAuthenticated, isProvider, async (req, res) => {
   try {
-    const { name, price, durationMinutes } = req.body;
+    const { name, description, price, durationMinutes } = req.body;
 
     if (!name || !price || !durationMinutes) {
       return res.status(400).json({ errorMessage: "Missing required fields." });
@@ -114,6 +114,7 @@ router.post("/services", isAuthenticated, isProvider, async (req, res) => {
     provider.services.push({
       id: crypto.randomUUID(),
       name,
+      description,
       price,
       durationMinutes,
     });
