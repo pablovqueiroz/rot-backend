@@ -158,6 +158,7 @@ router.put(
       }
 
       service.name = req.body.name ?? service.name;
+      service.description = req.body.description ?? service.description;
       service.price = req.body.price ?? service.price;
       service.durationMinutes =
         req.body.durationMinutes ?? service.durationMinutes;
