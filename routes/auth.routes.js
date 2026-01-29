@@ -9,7 +9,13 @@ const upload = require("../middlewares/upload.middleware");
 // Creates user
 router.post("/signup/user", upload.single("image"), async (req, res) => {
   try {
-    const { email, password, name, phone } = req.body;
+    const { email, password, confirmPassword, name, phone } = req.body;
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        errorMessage: "Passwords do not match.",
+      });
+    }
+
     if (!email || !password || !name || !req.file) {
       return res.status(400).json({
         errorMessage: "Provide email, password, name and profile image.",
@@ -62,7 +68,13 @@ router.post("/signup/user", upload.single("image"), async (req, res) => {
 // Creates provider
 router.post("/signup/provider", upload.single("image"), async (req, res) => {
   try {
-    const { email, password, name, phone } = req.body;
+    const { email, password, confirmPassword, name, phone } = req.body;
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        errorMessage: "Passwords do not match.",
+      });
+    }
 
     if (!email || !password || !name || !req.file) {
       return res.status(400).json({
