@@ -39,9 +39,18 @@ router.post("/signup/user", upload.single("image"), async (req, res) => {
       },
     });
 
-    const safeUser = await User.findById(createdUser._id).select("-password");
+    const payload = {
+      _id: createdUser._id,
+      role: "user",
+      email: createdUser.email,
+    };
 
-    return res.status(201).json(safeUser);
+    const authToken = jwt.sign(payload, process.env.TOKEN_SECRET, {
+      algorithm: "HS256",
+      expiresIn: "6h",
+    });
+
+    return res.status(201).json({ authToken });
   } catch (err) {
     console.error(err);
     return res.status(500).json({
@@ -87,11 +96,18 @@ router.post("/signup/provider", upload.single("image"), async (req, res) => {
       isActive: true,
     });
 
-    const safeProvider = await Provider.findById(createdProvider._id).select(
-      "-password",
-    );
+    const payload = {
+      _id: createdProvider._id,
+      role: "provider",
+      email: createdProvider.email,
+    };
 
-    return res.status(201).json(safeProvider);
+    const authToken = jwt.sign(payload, process.env.TOKEN_SECRET, {
+      algorithm: "HS256",
+      expiresIn: "6h",
+    });
+
+    return res.status(201).json({ authToken });
   } catch (err) {
     console.error(err);
     return res.status(500).json({
