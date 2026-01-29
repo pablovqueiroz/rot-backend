@@ -14,7 +14,8 @@ const serviceSchema = new Schema(
 
      description: {
       type: String,
-      maxlength: 500,
+      default: "",
+      maxlength: 300,
     },
 
     price: {
