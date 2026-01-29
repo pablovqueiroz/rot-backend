@@ -14,7 +14,7 @@
 </p>
 
 <p align="center" style="font-size: 20px;">
-  🌍 <a href="https://right-on-time.netlify.app/">Live Demo</a>
+  🌍 <a href="https://rot-right-on-time.vercel.app/">Live Demo</a>
 </p>
 
 
@@ -282,5 +282,5 @@ This project was developed for academic purposes only and is not intended for co
 - 🌐 **Frontend** → https://github.com/pablovqueiroz/rot-frontend
 - ⚙️ **Backend** → https://github.com/pablovqueiroz/rot-backend
 <p style="font-size: 20px;">
-  🌍 <a href="https://right-on-time.netlify.app/">Live Demo</a>
+  🌍 <a href="https://rot-right-on-time.vercel.app/">Live Demo</a>
 </p>
