@@ -1,10 +1,110 @@
 const router = require("express").Router();
 const bcryptjs = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const passport = require("passport");
+const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const User = require("../models/User.model");
 const Provider = require("../models/Provider.model");
 const { isAuthenticated } = require("../middlewares/jwt.middleware");
 const upload = require("../middlewares/upload.middleware");
+
+const FRONTEND_URL = process.env.ORIGIN || "http://localhost:5173";
+const BACKEND_URL =
+  process.env.BACKEND_URL ||
+  `http://localhost:${process.env.PORT || 5005}`;
+
+if (!passport._strategy("google")) {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: `${BACKEND_URL}/api/auth/google/callback`,
+        proxy: true,
+      },
+      async (accessToken, refreshToken, profile, done) => {
+        try {
+          const email = profile.emails?.[0]?.value;
+          if (!email) {
+            return done(new Error("Google account has no email."), null);
+          }
+
+          let user = await User.findOne({ googleId: profile.id });
+          if (user) {
+            return done(null, user);
+          }
+
+          const existingProvider = await Provider.findOne({ email });
+          if (existingProvider) {
+            return done(null, false);
+          }
+
+          user = await User.findOne({ email });
+          if (user) {
+            user.googleId = profile.id;
+            if (!user.image?.url && profile.photos?.[0]?.value) {
+              user.image = {
+                url: profile.photos[0].value,
+                public_id: `google_${profile.id}`,
+              };
+            }
+            await user.save();
+            return done(null, user);
+          }
+
+          const newUser = await User.create({
+            googleId: profile.id,
+            name: profile.displayName || email.split("@")[0],
+            email,
+            image: profile.photos?.[0]?.value
+              ? {
+                  url: profile.photos[0].value,
+                  public_id: `google_${profile.id}`,
+                }
+              : undefined,
+            role: "user",
+          });
+
+          return done(null, newUser);
+        } catch (error) {
+          return done(error, null);
+        }
+      },
+    ),
+  );
+}
+
+router.get("/google", (req, res, next) => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return res.status(500).json({
+      errorMessage: "Google OAuth is not configured on the server.",
+    });
+  }
+
+  return next();
+}, passport.authenticate("google", { scope: ["profile", "email"], session: false }));
+
+router.get(
+  "/google/callback",
+  passport.authenticate("google", { session: false, failureRedirect: `${FRONTEND_URL}/login?error=google_auth_failed` }),
+  (req, res) => {
+    const payload = {
+      _id: req.user._id,
+      role: "user",
+      email: req.user.email,
+    };
+
+    const authToken = jwt.sign(payload, process.env.TOKEN_SECRET, {
+      algorithm: "HS256",
+      expiresIn: "6h",
+    });
+
+    const successRedirect = process.env.GOOGLE_SUCCESS_REDIRECT || `${FRONTEND_URL}/dashboard`;
+    const separator = successRedirect.includes("?") ? "&" : "?";
+
+    return res.redirect(`${successRedirect}${separator}token=${encodeURIComponent(authToken)}`);
+  },
+);
 
 // Creates user
 router.post("/signup/user", upload.single("image"), async (req, res) => {

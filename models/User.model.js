@@ -12,10 +12,16 @@ const userSchema = new Schema(
 
     password: {
       type: String,
-      required: [true, "Password is required."],
+      required: function () {
+        return !this.googleId;
+      },
       select: false,
     },
-
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
     name: {
       type: String,
       required: [true, "Name is required."],
@@ -28,12 +34,16 @@ const userSchema = new Schema(
     image: {
       url: {
         type: String,
-        required: true,
+        required: function () {
+          return !this.googleId;
+        },
       },
 
       public_id: {
         type: String,
-        required: true,
+        required: function () {
+          return !this.googleId;
+        },
       },
     },
 

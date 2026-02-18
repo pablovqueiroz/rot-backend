@@ -3,12 +3,12 @@ require("dotenv").config();
 require("./db");
 
 const express = require("express");
+const passport = require("passport");
 
 const app = express();
 
-const cors = require("cors");
-
 require("./config")(app);
+app.use(passport.initialize());
 
 const indexRoutes = require("./routes/index.routes");
 app.use("/api", indexRoutes);
