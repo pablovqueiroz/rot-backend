@@ -404,14 +404,22 @@ router.get("/verify", isAuthenticated, (req, res) => {
 // Delete own account regardless of role
 router.delete("/me", isAuthenticated, async (req, res) => {
   try {
-    const { _id, role } = req.payload;
+    const { _id, email } = req.payload;
 
-    if (role === "user") {
-      const user = await User.findById(_id);
-      if (!user) {
-        return res.status(404).json({ errorMessage: "User not found." });
-      }
+    let user = await User.findById(_id);
+    let provider = await Provider.findById(_id);
 
+    // Fallback for legacy/stale tokens where _id may not match current record.
+    if (!user && !provider && email) {
+      user = await User.findOne({ email });
+      provider = await Provider.findOne({ email });
+    }
+
+    if (!user && !provider) {
+      return res.status(404).json({ errorMessage: "Account not found." });
+    }
+
+    if (user) {
       if (user.image?.public_id) {
         try {
           await cloudinary.uploader.destroy(user.image.public_id);
@@ -419,17 +427,10 @@ router.delete("/me", isAuthenticated, async (req, res) => {
           console.error("Cloudinary delete failed:", cloudErr);
         }
       }
-
-      await User.findByIdAndDelete(_id);
-      return res.status(204).send();
+      await User.findByIdAndDelete(user._id);
     }
 
-    if (role === "provider") {
-      const provider = await Provider.findById(_id);
-      if (!provider) {
-        return res.status(404).json({ errorMessage: "Provider not found." });
-      }
-
+    if (provider) {
       if (provider.image?.public_id) {
         try {
           await cloudinary.uploader.destroy(provider.image.public_id);
@@ -437,12 +438,10 @@ router.delete("/me", isAuthenticated, async (req, res) => {
           console.error("Cloudinary delete failed:", cloudErr);
         }
       }
-
-      await Provider.findByIdAndDelete(_id);
-      return res.status(204).send();
+      await Provider.findByIdAndDelete(provider._id);
     }
 
-    return res.status(400).json({ errorMessage: "Invalid account role." });
+    return res.status(204).send();
   } catch (error) {
     console.error(error);
     return res.status(500).json({ errorMessage: "Internal server error" });
