@@ -55,8 +55,10 @@ Think of it as the "engine" running behind a user-friendly scheduling applicatio
 The system uses a **client-server architecture**, meaning:
 - The backend (this project) provides APIs that handle all business logic
 - A separate frontend application (website/mobile app) connects to these APIs
-- Data is stored in MongoDB, a modern database system
-- Security is managed through JWT tokens (secure login tokens)
+- Data is stored in MongoDB using Mongoose models (`User`, `Provider`, `Appointment`)
+- Authentication uses JWT with role-based authorization (`user` and `provider`)
+- Image flow uses Cloudinary + Multer for avatar upload/update
+- Providers manage `services` and `availability`, while users create and manage appointments
 
 ---
 
@@ -111,26 +113,34 @@ PORT=5005
 
 ## Project Structure
 
-```
-├── models/              # Database structure definitions
-│   ├── User.model.js
-│   ├── Provider.model.js
-│   └── Appointment.model.js
-├── routes/              # API endpoints
-│   ├── auth.routes.js
-│   ├── users.routes.js
-│   ├── providers.routes.js
-│   ├── appointments.routes.js
-│   └── upload.routes.js
-├── middlewares/         # Request validation & security
-│   ├── jwt.middleware.js
-│   ├── role.middleware.js
-│   └── upload.middleware.js
-├── config/              # Configuration files
-├── db/                  # Database connection
-├── error-handling/      # Error management
-├── tests/               # API testing documentation
-└── app.js, server.js    # Application entry points
+```text
+app.js                         # Express app setup and route mounting
+server.js                      # HTTP server bootstrap
+config/
+  cloudinary.js                # Cloudinary client config
+  index.js                     # Core middlewares (CORS, parser, logger)
+db/
+  index.js                     # MongoDB connection
+error-handling/
+  index.js                     # 404 and global error handler
+middlewares/
+  jwt.middleware.js            # JWT authentication
+  role.middleware.js           # Role guards (user/provider)
+  upload.middleware.js         # Multer + Cloudinary storage
+models/
+  User.model.js
+  Provider.model.js
+  Appointment.model.js
+routes/
+  index.routes.js              # /api health route
+  auth.routes.js               # signup, login, verify, password, delete, Google OAuth
+  users.routes.js              # user profile and image
+  providers.routes.js          # provider profile, services, availability
+  appointments.routes.js       # appointments lifecycle
+  upload.routes.js             # generic image upload endpoint
+assets/
+  images/                      # static project assets
+tests/                         # API testing documentation
 ```
 
 ---
@@ -284,3 +294,4 @@ This project was developed for academic purposes only and is not intended for co
 <p style="font-size: 20px;">
   🌍 <a href="https://rot-right-on-time.vercel.app/">Live Demo</a>
 </p>
+
