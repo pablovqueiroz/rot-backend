@@ -7,11 +7,13 @@ const User = require("../models/User.model");
 const Provider = require("../models/Provider.model");
 const { isAuthenticated } = require("../middlewares/jwt.middleware");
 const upload = require("../middlewares/upload.middleware");
+const cloudinary = require("../config/cloudinary");
 
 const FRONTEND_URL = process.env.ORIGIN || "http://localhost:5173";
-const BACKEND_URL =
+const RAW_BACKEND_URL =
   process.env.BACKEND_URL ||
   `http://localhost:${process.env.PORT || 5005}`;
+const BACKEND_URL = RAW_BACKEND_URL.replace(/\/+$/, "");
 
 if (!passport._strategy("google")) {
   passport.use(
@@ -21,38 +23,96 @@ if (!passport._strategy("google")) {
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
         callbackURL: `${BACKEND_URL}/api/auth/google/callback`,
         proxy: true,
+        passReqToCallback: true,
       },
-      async (accessToken, refreshToken, profile, done) => {
+      async (req, accessToken, refreshToken, profile, done) => {
         try {
+          const requestedRole = req.query.state;
+          if (requestedRole !== "user" && requestedRole !== "provider") {
+            return done(new Error("Invalid Google role selection."), null);
+          }
+
           const email = profile.emails?.[0]?.value;
           if (!email) {
             return done(new Error("Google account has no email."), null);
           }
 
-          let user = await User.findOne({ googleId: profile.id });
-          if (user) {
-            return done(null, user);
+          if (requestedRole === "user") {
+            let user = await User.findOne({ googleId: profile.id });
+            if (user) {
+              return done(null, { account: user, role: "user" });
+            }
+
+            const providerWithGoogle = await Provider.findOne({
+              googleId: profile.id,
+            });
+            if (providerWithGoogle) {
+              return done(null, false);
+            }
+
+            const existingProvider = await Provider.findOne({ email });
+            if (existingProvider) {
+              return done(null, false);
+            }
+
+            user = await User.findOne({ email });
+            if (user) {
+              user.googleId = profile.id;
+              if (!user.image?.url && profile.photos?.[0]?.value) {
+                user.image = {
+                  url: profile.photos[0].value,
+                  public_id: `google_${profile.id}`,
+                };
+              }
+              await user.save();
+              return done(null, { account: user, role: "user" });
+            }
+
+            const newUser = await User.create({
+              googleId: profile.id,
+              name: profile.displayName || email.split("@")[0],
+              email,
+              image: profile.photos?.[0]?.value
+                ? {
+                    url: profile.photos[0].value,
+                    public_id: `google_${profile.id}`,
+                  }
+                : undefined,
+              role: "user",
+            });
+
+            return done(null, { account: newUser, role: "user" });
           }
 
-          const existingProvider = await Provider.findOne({ email });
-          if (existingProvider) {
+          let provider = await Provider.findOne({ googleId: profile.id });
+          if (provider) {
+            return done(null, { account: provider, role: "provider" });
+          }
+
+          const userWithGoogle = await User.findOne({ googleId: profile.id });
+          if (userWithGoogle) {
             return done(null, false);
           }
 
-          user = await User.findOne({ email });
-          if (user) {
-            user.googleId = profile.id;
-            if (!user.image?.url && profile.photos?.[0]?.value) {
-              user.image = {
+          const existingUser = await User.findOne({ email });
+          if (existingUser) {
+            return done(null, false);
+          }
+
+          provider = await Provider.findOne({ email });
+          if (provider) {
+            provider.googleId = profile.id;
+            if (!provider.image?.url && profile.photos?.[0]?.value) {
+              provider.image = {
                 url: profile.photos[0].value,
                 public_id: `google_${profile.id}`,
               };
             }
-            await user.save();
-            return done(null, user);
+            await provider.save();
+            return done(null, { account: provider, role: "provider" });
           }
 
-          const newUser = await User.create({
+          const newProvider = await Provider.create({
             googleId: profile.id,
             name: profile.displayName || email.split("@")[0],
             email,
@@ -62,10 +122,11 @@ if (!passport._strategy("google")) {
                   public_id: `google_${profile.id}`,
                 }
               : undefined,
-            role: "user",
+            role: "provider",
+            isActive: true,
           });
 
-          return done(null, newUser);
+          return done(null, { account: newProvider, role: "provider" });
         } catch (error) {
           return done(error, null);
         }
@@ -81,17 +142,40 @@ router.get("/google", (req, res, next) => {
     });
   }
 
+  const role = req.query.role;
+  if (role !== "user" && role !== "provider") {
+    return res.send(`
+      <html>
+        <body style="font-family: Arial, sans-serif; padding: 24px;">
+          <h2>Sign in with Google</h2>
+          <p>Choose how you want to continue:</p>
+          <a href="/api/auth/google?role=user" style="display:inline-block;padding:10px 14px;margin-right:8px;background:#111;color:#fff;text-decoration:none;border-radius:6px;">Continue as User</a>
+          <a href="/api/auth/google?role=provider" style="display:inline-block;padding:10px 14px;background:#0b5fff;color:#fff;text-decoration:none;border-radius:6px;">Continue as Provider</a>
+        </body>
+      </html>
+    `);
+  }
+
   return next();
-}, passport.authenticate("google", { scope: ["profile", "email"], session: false }));
+}, (req, res, next) =>
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    session: false,
+    state: req.query.role,
+  })(req, res, next),
+);
 
 router.get(
   "/google/callback",
-  passport.authenticate("google", { session: false, failureRedirect: `${FRONTEND_URL}/login?error=google_auth_failed` }),
+  passport.authenticate("google", {
+    session: false,
+    failureRedirect: `${FRONTEND_URL}/login?error=google_auth_failed`,
+  }),
   (req, res) => {
     const payload = {
-      _id: req.user._id,
-      role: "user",
-      email: req.user.email,
+      _id: req.user.account._id,
+      role: req.user.role,
+      email: req.user.account.email,
     };
 
     const authToken = jwt.sign(payload, process.env.TOKEN_SECRET, {
@@ -315,6 +399,54 @@ router.put("/change-password", isAuthenticated, async (req, res) => {
 // Verify token
 router.get("/verify", isAuthenticated, (req, res) => {
   res.status(200).json({ decodedToken: req.payload });
+});
+
+// Delete own account regardless of role
+router.delete("/me", isAuthenticated, async (req, res) => {
+  try {
+    const { _id, role } = req.payload;
+
+    if (role === "user") {
+      const user = await User.findById(_id);
+      if (!user) {
+        return res.status(404).json({ errorMessage: "User not found." });
+      }
+
+      if (user.image?.public_id) {
+        try {
+          await cloudinary.uploader.destroy(user.image.public_id);
+        } catch (cloudErr) {
+          console.error("Cloudinary delete failed:", cloudErr);
+        }
+      }
+
+      await User.findByIdAndDelete(_id);
+      return res.status(204).send();
+    }
+
+    if (role === "provider") {
+      const provider = await Provider.findById(_id);
+      if (!provider) {
+        return res.status(404).json({ errorMessage: "Provider not found." });
+      }
+
+      if (provider.image?.public_id) {
+        try {
+          await cloudinary.uploader.destroy(provider.image.public_id);
+        } catch (cloudErr) {
+          console.error("Cloudinary delete failed:", cloudErr);
+        }
+      }
+
+      await Provider.findByIdAndDelete(_id);
+      return res.status(204).send();
+    }
+
+    return res.status(400).json({ errorMessage: "Invalid account role." });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ errorMessage: "Internal server error" });
+  }
 });
 
 module.exports = router;

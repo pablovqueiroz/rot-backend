@@ -1,6 +1,5 @@
 const router = require("express").Router();
 const User = require("../models/User.model");
-const Appointment = require("../models/Appointment.model");
 const { isAuthenticated } = require("../middlewares/jwt.middleware");
 const { isUser } = require("../middlewares/role.middleware");
 const cloudinary = require("../config/cloudinary");
@@ -83,8 +82,16 @@ router.delete("/me", isAuthenticated, isUser, async (req, res) => {
   try {
     const user = await User.findById(req.payload._id);
 
-    if (user?.image?.public_id) {
-      await cloudinary.uploader.destroy(user.image.public_id);
+    if (!user) {
+      return res.status(404).json({ errorMessage: "User not found." });
+    }
+
+    if (user.image?.public_id) {
+      try {
+        await cloudinary.uploader.destroy(user.image.public_id);
+      } catch (cloudErr) {
+        console.error("Cloudinary delete failed:", cloudErr);
+      }
     }
 
     await User.findByIdAndDelete(req.payload._id);
