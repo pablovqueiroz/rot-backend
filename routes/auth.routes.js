@@ -142,19 +142,10 @@ router.get("/google", (req, res, next) => {
     });
   }
 
-  const role = req.query.role;
-  if (role !== "user" && role !== "provider") {
-    return res.send(`
-      <html>
-        <body style="font-family: Arial, sans-serif; padding: 24px;">
-          <h2>Sign in with Google</h2>
-          <p>Choose how you want to continue:</p>
-          <a href="/api/auth/google?role=user" style="display:inline-block;padding:10px 14px;margin-right:8px;background:#111;color:#fff;text-decoration:none;border-radius:6px;">Continue as User</a>
-          <a href="/api/auth/google?role=provider" style="display:inline-block;padding:10px 14px;background:#0b5fff;color:#fff;text-decoration:none;border-radius:6px;">Continue as Provider</a>
-        </body>
-      </html>
-    `);
-  }
+const role = req.query.role;
+if (role !== "user" && role !== "provider") {
+  return res.status(400).json({ errorMessage: "Role is required." });
+}
 
   return next();
 }, (req, res, next) =>
